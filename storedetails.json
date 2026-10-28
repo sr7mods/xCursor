@@ -1,0 +1,41 @@
+{
+  "config": {
+    "store_name": "xCursor Store",
+    "about_url": "https://sr7mods.github.io/about-dev/"
+  },
+  "recommendation": [
+    "neon_blue",
+    "cyberpunk_gold",
+    "minimal_dark"
+  ],
+  "cursor_styles": [
+    {
+      "id": "neon_blue",
+      "name": "Neon Blue Glow",
+      "description": "A sleek, futuristic neon blue pointer crafted with subtle glassmorphism glow effects for high-end desktop environments.",
+      "preview_image": "styles/neon_blue/neon_blue.png",
+      "download_link": "https://raw.githubusercontent.com/sr7mods/xcursor-store/main/styles/neon_blue/neon_blue.zip"
+    },
+    {
+      "id": "cyberpunk_gold",
+      "name": "Cyberpunk Gold",
+      "description": "Luxurious gold-accented custom cursor style designed for an elite cyberpunk desktop aesthetic.",
+      "preview_image": "styles/cyberpunk_gold/cyberpunk_gold.png",
+      "download_link": "https://raw.githubusercontent.com/sr7mods/xcursor-store/main/styles/cyberpunk_gold/cyberpunk_gold.zip"
+    },
+    {
+      "id": "minimal_dark",
+      "name": "Minimal Dark Sleek",
+      "description": "Clean, ultra-minimalist dark pointer designed for productivity and distraction-free workspace setups.",
+      "preview_image": "styles/minimal_dark/minimal_dark.png",
+      "download_link": "https://raw.githubusercontent.com/sr7mods/xcursor-store/main/styles/minimal_dark/minimal_dark.zip"
+    },
+    {
+      "id": "crystal_glass",
+      "name": "Crystal Glass",
+      "description": "Transparent glassy border pointer that adapts seamlessly to light and dark wallpapers.",
+      "preview_image": "styles/crystal_glass/crystal_glass.png",
+      "download_link": "https://raw.githubusercontent.com/sr7mods/xcursor-store/main/styles/crystal_glass/crystal_glass.zip"
+    }
+  ]
+}

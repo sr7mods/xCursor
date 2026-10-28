@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>xCursor Store</title>
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap');
+
+      :root {
+        --font-display: 'Rajdhani', sans-serif;
+        --font-sans: 'Plus Jakarta Sans', sans-serif;
+        --color-bg-light: #f8fafc;
+        --color-card-bg: #ffffff;
+        --color-primary: #0284c7;
+        --color-primary-hover: #0369a1;
+        --border-color: rgba(0, 0, 0, 0.08);
+      }
+
+      body {
+        background-color: var(--color-bg-light);
+        font-family: var(--font-sans);
+        color: #1e293b;
+        overflow-x: hidden;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .font-display {
+        font-family: var(--font-display);
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      }
+
+      .cursor-card {
+        background: var(--color-card-bg);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .cursor-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(2, 132, 199, 0.3);
+        box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+      }
+
+      /* Hamburger menu animation */
+      .hamburger-line {
+        transition: transform 0.3s ease, opacity 0.3s ease;
+      }
+      .sidebar-open .line-1 {
+        transform: translateY(6px) rotate(45deg);
+      }
+      .sidebar-open .line-2 {
+        opacity: 0;
+      }
+      .sidebar-open .line-3 {
+        transform: translateY(-6px) rotate(-45deg);
+      }
+
+      /* Carousel Smooth Scrolling */
+      .carousel-viewport {
+        overflow: hidden;
+        position: relative;
+        width: 100%;
+        cursor: grab;
+      }
+      .carousel-viewport:active {
+        cursor: grabbing;
+      }
+      .carousel-track {
+        display: flex;
+        transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-gray-200/60 py-3 px-4 md:px-8">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <!-- Hamburger Menu -->
+        <div class="flex items-center">
+          <button id="burger-menu-btn" class="flex flex-col justify-between w-6 h-5 focus:outline-none z-50 group" aria-label="Toggle Navigation">
+            <span class="hamburger-line line-1 w-6 h-0.5 bg-slate-700 group-hover:bg-sky-600 rounded"></span>
+            <span class="hamburger-line line-2 w-5 h-0.5 bg-slate-700 group-hover:bg-sky-600 rounded"></span>
+            <span class="hamburger-line line-3 w-6 h-0.5 bg-slate-700 group-hover:bg-sky-600 rounded"></span>
+          </button>
+        </div>
+
+        <!-- Store Title & Designer Name -->
+        <div class="flex flex-col items-center text-center cursor-pointer" onclick="switchView('home')">
+          <h1 class="store-title-header font-display text-2xl md:text-3xl font-extrabold tracking-wider text-slate-900">
+            xCursor Store
+          </h1>
+          <span class="text-[10px] md:text-xs font-mono text-slate-500 uppercase tracking-widest mt-0.5">
+            Designer: SR7 Mods
+          </span>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="flex items-center gap-2 relative">
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Search styles..." 
+            class="w-0 opacity-0 py-1 px-2 text-xs bg-white border border-gray-300 rounded-lg text-slate-800 font-mono tracking-wider transition-all duration-300 focus:outline-none focus:border-sky-500"
+          />
+          <button id="search-btn" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 border border-gray-200 transition-all text-slate-700 focus:outline-none" aria-label="Search">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 hidden pointer-events-none transition-opacity duration-300"></div>
+    <aside id="sidebar-nav" class="fixed top-0 left-0 h-screen w-72 bg-white border-r border-gray-200 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out p-6 flex flex-col justify-between shadow-2xl">
+      <div class="space-y-6">
+        <div class="border-b border-gray-100 pb-4">
+          <h2 class="font-display text-lg font-bold text-slate-800 uppercase tracking-wider">Navigation</h2>
+        </div>
+        <nav>
+          <ul class="space-y-3 font-mono text-sm">
+            <li>
+              <a href="#" onclick="switchView('home'); closeSidebar(); return false;" class="flex items-center gap-3 text-slate-600 hover:text-sky-600 py-1.5 uppercase transition-colors">
+                <span class="text-sky-500">&gt;</span> Home
+              </a>
+            </li>
+            <li>
+              <a href="https://sr7mods.github.io/about-dev/" target="_blank" class="flex items-center gap-3 text-slate-600 hover:text-sky-600 py-1.5 uppercase transition-colors">
+                <span class="text-sky-500">&gt;</span> About Designer
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+      <div class="border-t border-gray-100 pt-4 text-center">
+        <p class="text-[10px] text-slate-400 font-mono uppercase">© SR7 Mods</p>
+      </div>
+    </aside>
+
+    <!-- MAIN DYNAMIC CONTAINER (Handles both Home & Detail views seamlessly) -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-12">
+      <div id="view-container">
+        <!-- Dynamically injected view content goes here -->
+      </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-12 glass-panel border-t border-gray-200 py-6 px-4 text-center">
+      <div class="max-w-4xl mx-auto space-y-2">
+        <p class="text-xs text-slate-600 font-mono font-semibold">xCursor Store — Custom Cursor Styles Hub</p>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          © 2026 SR7 Mods. All custom cursor assets are crafted for personal customization.
+        </p>
+      </div>
+    </footer>
+
+    <!-- JAVASCRIPT APP ENGINE -->
+    <script>
+      let storeDB = null;
+      let searchQuery = '';
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        await loadDatabase();
+        setupNavigation();
+        handleRouting();
+
+        window.addEventListener('popstate', () => {
+          handleRouting();
+        });
+      });
+
+      async function loadDatabase() {
+        try {
+          const res = await fetch(`./storedetails.json?t=${Date.now()}`);
+          if (res.ok) {
+            storeDB = await res.json();
+          }
+        } catch (e) {
+          console.error("Failed to load storedetails.json", e);
+        }
+      }
+
+      function setupNavigation() {
+        const burgerBtn = document.getElementById('burger-menu-btn');
+        const sidebar = document.getElementById('sidebar-nav');
+        const overlay = document.getElementById('sidebar-overlay');
+        const searchBtn = document.getElementById('search-btn');
+        const searchInput = document.getElementById('search-input');
+
+        if (burgerBtn && sidebar && overlay) {
+          burgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = sidebar.classList.contains('translate-x-0');
+            isOpen ? closeSidebar() : openSidebar();
+          });
+          overlay.addEventListener('click', closeSidebar);
+        }
+
+        if (searchBtn && searchInput) {
+          searchBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            searchInput.classList.toggle('w-0');
+            searchInput.classList.toggle('w-48');
+            searchInput.classList.toggle('opacity-0');
+            searchInput.classList.toggle('px-3');
+            searchInput.focus();
+          });
+
+          searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase().trim();
+            if (getCurrentView() === 'home') {
+              renderHomeView();
+            }
+          });
+        }
+      }
+
+      function openSidebar() {
+        document.getElementById('sidebar-nav').classList.remove('-translate-x-full');
+        document.getElementById('sidebar-nav').classList.add('translate-x-0');
+        document.getElementById('sidebar-overlay').classList.remove('hidden', 'pointer-events-none');
+        document.getElementById('burger-menu-btn').classList.add('sidebar-open');
+      }
+
+      function closeSidebar() {
+        document.getElementById('sidebar-nav').classList.add('-translate-x-full');
+        document.getElementById('sidebar-nav').classList.remove('translate-x-0');
+        document.getElementById('sidebar-overlay').classList.add('hidden', 'pointer-events-none');
+        document.getElementById('burger-menu-btn').classList.remove('sidebar-open');
+      }
+
+      function getCurrentView() {
+        const params = new URLSearchParams(window.location.search);
+        return params.has('id') ? 'detail' : 'home';
+      }
+
+      function switchView(view, id = null) {
+        if (view === 'home') {
+          history.pushState({}, '', window.location.pathname);
+        } else if (view === 'detail' && id) {
+          history.pushState({}, '', `?id=${id}`);
+        }
+        handleRouting();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function handleRouting() {
+        if (!storeDB) return;
+        const params = new URLSearchParams(window.location.search);
+        const styleId = params.get('id');
+
+        if (styleId) {
+          renderDetailView(styleId);
+        } else {
+          renderHomeView();
+        }
+      }
+
+      /* RENDER HOME VIEW */
+      function renderHomeView() {
+        const container = document.getElementById('view-container');
+        if (!storeDB) return;
+
+        let filteredStyles = storeDB.cursor_styles || [];
+        if (searchQuery) {
+          filteredStyles = filteredStyles.filter(s => 
+            s.name.toLowerCase().includes(searchQuery) || 
+            s.id.toLowerCase().includes(searchQuery) ||
+            s.description.toLowerCase().includes(searchQuery)
+          );
+        }
+
+        const recommendedIds = storeDB.recommendation || [];
+        const recommendedStyles = storeDB.cursor_styles.filter(s => recommendedIds.includes(s.id));
+
+        let html = '';
+
+        // 1. Recommended Carousel Section
+        if (recommendedStyles.length > 0 && !searchQuery) {
+          html += `
+            <section class="space-y-4">
+              <div class="flex items-center justify-between border-b border-gray-200 pb-2">
+                <h2 class="font-display text-xl font-bold tracking-wider text-slate-800 uppercase flex items-center gap-2">
+                  <span>✨</span> Recommended Cursors
+                </h2>
+                <span class="text-[10px] font-mono text-slate-400 uppercase">Swipe / Draggable</span>
+              </div>
+              <div id="carousel-viewport" class="carousel-viewport glass-panel rounded-2xl p-3">
+                <div id="carousel-track" class="carousel-track">
+          `;
+
+          const duplicatedRecs = [...recommendedStyles, ...recommendedStyles, ...recommendedStyles];
+          duplicatedRecs.forEach(style => {
+            html += `
+              <div class="flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 p-2">
+                <div class="cursor-card p-4 rounded-xl flex items-center gap-4 cursor-pointer h-full" onclick="switchView('detail', '${style.id}')">
+                  <img src="${style.preview_image}" alt="${style.name}" class="w-14 h-14 rounded-lg object-cover border border-gray-100 bg-slate-50" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80'">
+                  <div class="overflow-hidden flex-1">
+                    <span class="text-[10px] uppercase bg-sky-50 text-sky-600 px-2 py-0.5 rounded font-mono font-semibold">Featured</span>
+                    <h3 class="font-display text-lg font-bold text-slate-900 mt-1 truncate">${style.name}</h3>
+                    <p class="text-xs text-slate-500 truncate font-mono">ID: ${style.id}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+
+          html += `
+                </div>
+              </div>
+            </section>
+          `;
+        }
+
+        // 2. All Cursor Styles Grid Section
+        html += `
+          <section class="space-y-6">
+            <div class="flex items-center justify-between border-b border-gray-200 pb-3">
+              <h2 class="font-display text-xl font-bold tracking-wider text-slate-800 uppercase flex items-center gap-2">
+                <span>📁</span> Cursor Styles Collection
+              </h2>
+              <span class="text-xs font-mono text-slate-500 uppercase">Total: ${filteredStyles.length}</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        `;
+
+        if (filteredStyles.length === 0) {
+          html += `
+            <div class="col-span-full py-16 text-center">
+              <p class="text-slate-500 font-mono text-sm uppercase">No cursor styles found matching your query.</p>
+            </div>
+          `;
+        } else {
+          filteredStyles.forEach(style => {
+            html += `
+              <div class="cursor-card p-5 rounded-2xl flex flex-col justify-between cursor-pointer" onclick="switchView('detail', '${style.id}')">
+                <div class="flex items-center gap-4 mb-4">
+                  <img src="${style.preview_image}" alt="${style.name}" class="w-16 h-16 rounded-xl object-cover border border-gray-100 bg-slate-50" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80'">
+                  <div class="overflow-hidden flex-1">
+                    <h3 class="font-display font-bold text-lg text-slate-900 truncate">${style.name}</h3>
+                    <span class="text-[10px] font-mono text-slate-400">ID: ${style.id}</span>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-600 line-clamp-2 mb-4 font-sans">${style.description}</p>
+                <div class="border-t border-gray-100 pt-3 flex items-center justify-between text-xs font-mono text-sky-600 font-semibold">
+                  <span>View Details &rarr;</span>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        html += `</div></section>`;
+        container.innerHTML = html;
+
+        // Initialize Carousel Interaction if available
+        if (recommendedStyles.length > 0 && !searchQuery) {
+          initCarousel(recommendedStyles.length);
+        }
+      }
+
+      /* RENDER DETAIL VIEW (App.html functionality integrated) */
+      function renderDetailView(id) {
+        const container = document.getElementById('view-container');
+        if (!storeDB) return;
+
+        const style = storeDB.cursor_styles.find(s => s.id === id);
+        if (!style) {
+          container.innerHTML = `
+            <div class="glass-panel p-8 text-center rounded-2xl space-y-4">
+              <p class="text-rose-600 font-mono text-sm uppercase">Cursor style not found.</p>
+              <button onclick="switchView('home')" class="bg-sky-600 hover:bg-sky-700 text-white font-mono text-xs uppercase px-5 py-2.5 rounded-xl transition-all">Back to Store</button>
+            </div>
+          `;
+          return;
+        }
+
+        document.title = `${style.name} - xCursor Store`;
+
+        container.innerHTML = `
+          <div class="space-y-8 animate-fade-in max-w-4xl mx-auto">
+            <!-- Top Detail Card -->
+            <div class="glass-panel p-6 md:p-8 rounded-2xl flex flex-col md:flex-row items-center md:items-start gap-6">
+              <img src="${style.preview_image}" alt="${style.name}" class="w-32 h-32 rounded-2xl object-cover border border-gray-200 bg-slate-50 shadow-sm" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80'">
+              
+              <div class="flex-grow space-y-4 w-full text-center md:text-left">
+                <div class="space-y-1">
+                  <span class="text-[10px] tracking-wider uppercase bg-sky-50 text-sky-600 border border-sky-100 px-3 py-1 rounded-full font-mono font-semibold inline-block">
+                    Style ID: ${style.id}
+                  </span>
+                  <h1 class="font-display text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight uppercase tracking-wider">
+                    ${style.name}
+                  </h1>
+                </div>
+                <div class="flex items-center justify-center md:justify-start gap-4 text-xs font-mono text-slate-500">
+                  <span>Designer: <strong class="text-slate-700">SR7 Mods</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description & Download Section -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div class="md:col-span-2 glass-panel p-6 rounded-2xl space-y-4">
+                <h2 class="font-display text-xl font-bold tracking-wider text-slate-800 uppercase flex items-center gap-2">
+                  <span>📖</span> Description & Usage
+                </h2>
+                <div class="text-sm text-slate-600 leading-relaxed font-sans space-y-2">
+                  <p>${style.description}</p>
+                </div>
+              </div>
+
+              <div class="space-y-6">
+                <div class="glass-panel p-6 rounded-2xl space-y-4">
+                  <h2 class="font-display text-lg font-bold tracking-wider text-slate-800 uppercase">Download Package</h2>
+                  <p class="text-xs text-slate-500 font-mono">Get the complete cursor ZIP package directly from repository.</p>
+                  <a href="${style.download_link}" target="_blank" class="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 px-6 rounded-xl font-mono text-xs uppercase font-semibold text-center tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Download ZIP
+                  </a>
+                </div>
+
+                <button onclick="switchView('home')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 px-6 rounded-xl font-mono text-xs uppercase tracking-wider transition-all">
+                  &larr; Back to Store
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      /* Carousel Helper */
+      function initCarousel(itemCount) {
+        const track = document.getElementById('carousel-track');
+        if (!track) return;
+        let currentIndex = itemCount;
+        let timer = null;
+
+        const updatePos = (smooth = true) => {
+          if (!track.children[0]) return;
+          const w = track.children[0].offsetWidth;
+          track.style.transition = smooth ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
+          track.style.transform = `translateX(${-currentIndex * w}px)`;
+        };
+
+        const startAuto = () => {
+          timer = setInterval(() => {
+            currentIndex++;
+            updatePos(true);
+            setTimeout(() => {
+              if (currentIndex >= itemCount * 2) {
+                currentIndex = itemCount;
+                updatePos(false);
+              }
+            }, 500);
+          }, 3000);
+        };
+
+        const stopAuto = () => clearInterval(timer);
+
+        track.addEventListener('mouseenter', stopAuto);
+        track.addEventListener('mouseleave', startAuto);
+
+        setTimeout(() => {
+          updatePos(false);
+          startAuto();
+        }, 100);
+      }
+    </script>
+  </body>
+</html>
