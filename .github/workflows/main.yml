@@ -1,0 +1,87 @@
+name: Compile Raw XML to Binary AXML
+
+on:
+  workflow_dispatch:
+    inputs:
+      xml_code:
+        description: 'Raw XML Code (e.g., vector drawable)'
+        required: true
+        type: string
+      file_path:
+        description: 'Repository Folder Path (e.g., styles/minecraft/)'
+        required: true
+        default: 'res/drawable/'
+        type: string
+      file_name:
+        description: 'Output File Name (e.g., minecraft_pointer.xml)'
+        required: true
+        default: 'output.xml'
+        type: string
+
+jobs:
+      
+  compile-and-push:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Store Branch
+        uses: actions/checkout@v4
+        with:
+          ref: 'store'
+
+      - name: Set up Android SDK & Build Tools (for aapt2)
+        uses: android-actions/setup-android@v3
+
+      - name: Install aapt2 (if not available via build-tools)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aapt
+
+      - name: Create and Compile XML
+        run: |
+          # Create target directory if it doesn't exist
+          mkdir -p input_dir output_dir
+          
+          # Clean inputs and write raw XML to file
+          echo "${{ inputs.xml_code }}" > input_dir/raw.xml
+          
+          echo "Compiling XML using aapt2..."
+          # aapt2 compile command generates a flat archive containing compiled files
+          aapt2 compile --legacy -o output_dir/compiled.zip input_dir/raw.xml
+          
+          # Extract the compiled binary AXML from the zip
+          unzip -o output_dir/compiled.zip -d output_dir/extracted/
+          
+          # Find the actual compiled file inside extracted folder
+          COMPILED_FILE=$(find output_dir/extracted -name "*.xml" | head -n 1)
+          
+          if [ -z "$COMPILED_FILE" ]; then
+            echo "Error: Compilation failed!"
+            exit 1
+          fi
+          
+          # Prepare final destination path
+          TARGET_DIR="${{ inputs.file_path }}"
+          mkdir -p "$TARGET_DIR"
+          
+          # Move compiled binary AXML to destination with desired file name
+          cp "$COMPILED_FILE" "$TARGET_DIR/${{ inputs.file_name }}"
+          echo "Successfully compiled and saved to $TARGET_DIR/${{ inputs.file_name }}"
+
+      - name: Commit and Push Changes to Store Branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add "${{ inputs.file_path }}/${{ inputs.file_name }}"
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to push."
+          else
+            git commit -m "Auto-compile AXML: ${{ inputs.file_name }} on store branch"
+            git push origin store
+          fi
