@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       file_name:
-        description: 'File Name without extension (e.g., minecraft_pointer)'
+        description: 'File Name without extension (e.g., minecraft_normal)'
         required: true
         type: string
 
@@ -26,12 +26,17 @@ jobs:
         with:
           ref: 'store'
 
-      - name: Install aapt/aapt2
+      - name: Install aapt2 and tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y aapt android-sdk-build-tools
+          sudo apt-get install -y aapt2 wget
 
-      - name: Create and Compile XML
+      - name: Download Android Stub Jar
+        run: |
+          # Download lightweight android.jar required for aapt2 attribute linking
+          wget -q https://github.com/simpligility/android-maven-plugin/raw/master/src/test/resources/projects/base/libs/android.jar -O android.jar
+
+      - name: Compile and Link XML to Binary AXML
         env:
           XML_CODE: ${{ inputs.xml_code }}
           RAW_NAME: ${{ inputs.file_name }}
@@ -44,49 +49,55 @@ jobs:
           fi
           echo "Target File Name: $FILE_NAME"
 
-          # Create proper resource directory structure required by aapt2
-          mkdir -p input_dir/drawable output_dir
+          # Create workspace directories
+          mkdir -p work_dir/res/drawable work_dir/output
           
-          # Write raw XML safely using environment variable
-          echo "$XML_CODE" > "input_dir/drawable/$FILE_NAME"
+          # Write raw XML safely
+          echo "$XML_CODE" > "work_dir/res/drawable/$FILE_NAME"
           
-          echo "Compiling XML using aapt2..."
-          aapt2 compile --legacy -o output_dir/compiled.zip "input_dir/drawable/$FILE_NAME"
+          # Create minimal AndroidManifest.xml required for linking
+          cat <<EOF > work_dir/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.sr7.compiler">
+              <application />
+          </manifest>
+          EOF
+
+          cd work_dir
           
-          # Extract the compiled binary AXML from the zip
-          unzip -o output_dir/compiled.zip -d output_dir/extracted/
+          echo "Step 1: Compiling XML to flat file..."
+          aapt2 compile --legacy -o compiled.zip res/drawable/$FILE_NAME
           
-          # Find the actual compiled file inside extracted folder
-          COMPILED_FILE=$(find output_dir/extracted -name "*.xml" | head -n 1)
+          echo "Step 2: Linking compiled file into binary AXML package..."
+          aapt2 link --manifest AndroidManifest.xml -I ../android.jar -o output.apk compiled.zip
           
-          if [ -z "$COMPILED_FILE" ]; then
-            echo "Error: Compilation failed!"
+          echo "Step 3: Extracting final binary AXML..."
+          unzip -o output.apk res/drawable/$FILE_NAME -d extracted/
+          
+          COMPILED_FILE="extracted/res/drawable/$FILE_NAME"
+          
+          if [ ! -f "$COMPILED_FILE" ]; then
+            echo "Error: Compilation and linking failed!"
             exit 1
           fi
           
-          # Default clean path for resources
-          TARGET_DIR="res/drawable"
-          mkdir -p "$TARGET_DIR"
-          
-          # Move compiled binary AXML to destination
-          cp "$COMPILED_FILE" "$TARGET_DIR/$FILE_NAME"
-          echo "Successfully compiled and saved to $TARGET_DIR/$FILE_NAME"
+          # Move compiled binary AXML to repo destination folder (res/drawable)
+          mkdir -p ../res/drawable
+          cp "$COMPILED_FILE" ../res/drawable/$FILE_NAME
+          echo "Successfully compiled and saved to res/drawable/$FILE_NAME"
 
-          # Pass variables to next step via environment file
           echo "FILE_NAME=$FILE_NAME" >> $GITHUB_ENV
-          echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
 
       - name: Commit and Push Changes to Store Branch
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add "$TARGET_DIR/$FILE_NAME"
+          git add "res/drawable/${{ env.FILE_NAME }}"
           
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to push."
           else
-            git commit -m "Auto-compile AXML: $FILE_NAME on store branch"
+            git commit -m "Auto-compile AXML: ${{ env.FILE_NAME }} on store branch"
             git push origin store
           fi
