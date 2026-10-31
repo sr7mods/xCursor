@@ -7,15 +7,9 @@ on:
         description: 'Raw XML Code (e.g., vector drawable)'
         required: true
         type: string
-      file_path:
-        description: 'Repository Folder Path (e.g., styles/minecraft/)'
-        required: true
-        default: 'res/drawable/'
-        type: string
       file_name:
-        description: 'Output File Name (e.g., minecraft_pointer.xml)'
+        description: 'File Name without extension (e.g., minecraft_pointer)'
         required: true
-        default: 'output.xml'
         type: string
 
 jobs:
@@ -40,16 +34,23 @@ jobs:
       - name: Create and Compile XML
         env:
           XML_CODE: ${{ inputs.xml_code }}
-          FILE_NAME: ${{ inputs.file_name }}
+          RAW_NAME: ${{ inputs.file_name }}
         run: |
+          # Automatically append .xml if user didn't type it
+          if [[ "$RAW_NAME" != *.xml ]]; then
+            FILE_NAME="${RAW_NAME}.xml"
+          else
+            FILE_NAME="$RAW_NAME"
+          fi
+          echo "Target File Name: $FILE_NAME"
+
           # Create proper resource directory structure required by aapt2
           mkdir -p input_dir/drawable output_dir
           
-          # Write raw XML safely using environment variable with exact filename
+          # Write raw XML safely using environment variable
           echo "$XML_CODE" > "input_dir/drawable/$FILE_NAME"
           
           echo "Compiling XML using aapt2..."
-          # Compile the file inside proper drawable resource folder
           aapt2 compile --legacy -o output_dir/compiled.zip "input_dir/drawable/$FILE_NAME"
           
           # Extract the compiled binary AXML from the zip
@@ -63,23 +64,24 @@ jobs:
             exit 1
           fi
           
-          # Prepare final destination path
-          TARGET_DIR="${{ inputs.file_path }}"
+          # Default clean path for resources
+          TARGET_DIR="res/drawable"
           mkdir -p "$TARGET_DIR"
           
-          # Move compiled binary AXML to destination with desired file name
+          # Move compiled binary AXML to destination
           cp "$COMPILED_FILE" "$TARGET_DIR/$FILE_NAME"
           echo "Successfully compiled and saved to $TARGET_DIR/$FILE_NAME"
 
+          # Pass variables to next step via environment file
+          echo "FILE_NAME=$FILE_NAME" >> $GITHUB_ENV
+          echo "TARGET_DIR=$TARGET_DIR" >> $GITHUB_ENV
+
       - name: Commit and Push Changes to Store Branch
-        env:
-          FILE_PATH: ${{ inputs.file_path }}
-          FILE_NAME: ${{ inputs.file_name }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add "$FILE_PATH/$FILE_NAME"
+          git add "$TARGET_DIR/$FILE_NAME"
           
           # Check if there are changes to commit
           if git diff --staged --quiet; then
