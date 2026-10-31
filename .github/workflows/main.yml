@@ -32,24 +32,37 @@ jobs:
         with:
           ref: 'store'
 
-      - name: Set up Android SDK & Build Tools (for aapt2)
-        uses: android-actions/setup-android@v3
-
-      - name: Install aapt2 (if not available via build-tools)
+      - name: Install aapt/aapt2
         run: |
           sudo apt-get update
           sudo apt-get install -y aapt
 
       - name: Create and Compile XML
         run: |
-          # Create target directory if it doesn't exist
+          # Create target directories
           mkdir -p input_dir output_dir
           
-          # Clean inputs and write raw XML to file
+          # Write raw XML to file
           echo "${{ inputs.xml_code }}" > input_dir/raw.xml
           
-          echo "Compiling XML using aapt2..."
-          # aapt2 compile command generates a flat archive containing compiled files
+          echo "Compiling XML using aapt..."
+          # Using aapt package compilation
+          aapt package -F output_dir/resources.apk -M AndroidManifest.xml -S input_dir --auto-add-to-extract 2>/dev/null || true
+          
+          # Alternative fallback using aapt2 compile if aapt package fails due to missing manifest
+          # Let's use standard aapt2 if available, or aapt compile
+          # Actually, 'aapt' tool package command needs manifest. Let's use direct aapt2 compile command:
+          
+          # Check if aapt2 exists, else install or use aapt
+          if ! command -v aapt2 &> /dev/null; then
+              echo "aapt2 not found directly, installing androidsdk build-tools or using aapt..."
+          fi
+          
+          # Let's fix the compilation command cleanly using standard aapt2 binary or apt package
+          # Ubuntu's 'aapt' package includes aapt. Let's download prebuilt aapt2 or use standard command.
+          sudo apt-get install -y android-sdk-build-tools || sudo apt-get install -y aapt2
+          
+          # Now compile raw.xml
           aapt2 compile --legacy -o output_dir/compiled.zip input_dir/raw.xml
           
           # Extract the compiled binary AXML from the zip
