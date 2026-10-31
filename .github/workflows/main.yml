@@ -35,35 +35,22 @@ jobs:
       - name: Install aapt/aapt2
         run: |
           sudo apt-get update
-          sudo apt-get install -y aapt
+          sudo apt-get install -y aapt android-sdk-build-tools
 
       - name: Create and Compile XML
+        env:
+          XML_CODE: ${{ inputs.xml_code }}
+          FILE_NAME: ${{ inputs.file_name }}
         run: |
-          # Create target directories
-          mkdir -p input_dir output_dir
+          # Create proper resource directory structure required by aapt2
+          mkdir -p input_dir/drawable output_dir
           
-          # Write raw XML to file
-          echo "${{ inputs.xml_code }}" > input_dir/raw.xml
+          # Write raw XML safely using environment variable with exact filename
+          echo "$XML_CODE" > "input_dir/drawable/$FILE_NAME"
           
-          echo "Compiling XML using aapt..."
-          # Using aapt package compilation
-          aapt package -F output_dir/resources.apk -M AndroidManifest.xml -S input_dir --auto-add-to-extract 2>/dev/null || true
-          
-          # Alternative fallback using aapt2 compile if aapt package fails due to missing manifest
-          # Let's use standard aapt2 if available, or aapt compile
-          # Actually, 'aapt' tool package command needs manifest. Let's use direct aapt2 compile command:
-          
-          # Check if aapt2 exists, else install or use aapt
-          if ! command -v aapt2 &> /dev/null; then
-              echo "aapt2 not found directly, installing androidsdk build-tools or using aapt..."
-          fi
-          
-          # Let's fix the compilation command cleanly using standard aapt2 binary or apt package
-          # Ubuntu's 'aapt' package includes aapt. Let's download prebuilt aapt2 or use standard command.
-          sudo apt-get install -y android-sdk-build-tools || sudo apt-get install -y aapt2
-          
-          # Now compile raw.xml
-          aapt2 compile --legacy -o output_dir/compiled.zip input_dir/raw.xml
+          echo "Compiling XML using aapt2..."
+          # Compile the file inside proper drawable resource folder
+          aapt2 compile --legacy -o output_dir/compiled.zip "input_dir/drawable/$FILE_NAME"
           
           # Extract the compiled binary AXML from the zip
           unzip -o output_dir/compiled.zip -d output_dir/extracted/
@@ -81,20 +68,23 @@ jobs:
           mkdir -p "$TARGET_DIR"
           
           # Move compiled binary AXML to destination with desired file name
-          cp "$COMPILED_FILE" "$TARGET_DIR/${{ inputs.file_name }}"
-          echo "Successfully compiled and saved to $TARGET_DIR/${{ inputs.file_name }}"
+          cp "$COMPILED_FILE" "$TARGET_DIR/$FILE_NAME"
+          echo "Successfully compiled and saved to $TARGET_DIR/$FILE_NAME"
 
       - name: Commit and Push Changes to Store Branch
+        env:
+          FILE_PATH: ${{ inputs.file_path }}
+          FILE_NAME: ${{ inputs.file_name }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add "${{ inputs.file_path }}/${{ inputs.file_name }}"
+          git add "$FILE_PATH/$FILE_NAME"
           
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to push."
           else
-            git commit -m "Auto-compile AXML: ${{ inputs.file_name }} on store branch"
+            git commit -m "Auto-compile AXML: $FILE_NAME on store branch"
             git push origin store
           fi
